@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>LED Control with MediaPipe</title>
+  <title>Gesture LED Control</title>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl"></script>
@@ -11,7 +11,7 @@
     body {
       margin: 0;
       background: #fff;
-      font-family: Arial, sans-serif;
+      font-family: Helvetica, Arial, sans-serif;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -61,6 +61,19 @@
       z-index: 10;
     }
 
+    #led-time-overlay {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      background: rgba(0, 0, 0, 0.4);
+      color: white;
+      padding: 4px 8px;
+      font-size: 12px;
+      border-radius: 4px;
+      z-index: 10;
+      font-family: Helvetica, Arial, sans-serif;
+    }
+
     #log {
       margin-top: 20px;
       width: 640px;
@@ -86,6 +99,7 @@
     <video id="video" width="640" height="480" autoplay muted playsinline></video>
     <canvas id="canvas" width="640" height="480"></canvas>
     <div id="status">Loading...</div>
+    <div id="led-time-overlay">LED ON: 0s</div>
   </div>
 
   <div id="log"><strong>Log :</strong></div>
@@ -97,10 +111,12 @@
     const ctx = canvas.getContext('2d');
     const statusBox = document.getElementById('status');
     const logBox = document.getElementById('log');
+    const ledTimeBox = document.getElementById('led-time-overlay');
 
     let ledState = false;
     let clickCount = 0;
     let cooldown = false;
+    let ledStartTime = null;
 
     function addLogEntry(action) {
       const time = new Date().toLocaleTimeString();
@@ -110,6 +126,17 @@
       logBox.appendChild(entry);
       logBox.scrollTop = logBox.scrollHeight;
     }
+
+    function updateLedTimeDisplay() {
+      if (ledState && ledStartTime) {
+        const seconds = Math.floor((Date.now() - ledStartTime) / 1000);
+        ledTimeBox.textContent = `LED ON: ${seconds}s`;
+      } else {
+        ledTimeBox.textContent = `LED ON: 0s`;
+      }
+    }
+
+    setInterval(updateLedTimeDisplay, 1000); 
 
     async function setupCamera() {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -163,6 +190,13 @@
               fetch(LED_URL + cmd).then(() => console.log("Command sent:", cmd));
               statusBox.innerText = `Gesture : ${cmd.toUpperCase()}`;
               addLogEntry(cmd);
+
+              if (ledState) {
+                ledStartTime = Date.now();
+              } else {
+                ledStartTime = null;
+              }
+
               clickCount = 0;
             }
           } else if (clickCount === 0) {
